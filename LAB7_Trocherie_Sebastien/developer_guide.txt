@@ -1,0 +1,236 @@
+Author:Sébastien Trocherie
+Class: EE104
+
+*** Needed libraries and packages ***
+
+For the following programs we need a couple of librarys from which we will use ploting and prediction functions.
+
+import numpy as np					-> Algebra functions
+import scipy.optimize as opt			-> optimization functions
+import scipy.stats as st			-> statistical functions 
+import math						-> Mathematical library (mostly used for pi)
+import matplotlib.pyplot as plt		-> Library to plot graphs 
+import csv						-> Library to read csv files
+
+
+1) Noise Cancelling 
+
+In this program we will create a noise cancelling application, the waveform that the code will analyse consists of 3 seperate waves combined into 1.
+The program will filter out a frequency and convert it back to the time domain.
+First we need to create 3 different tones, to do this I used the following site: https://www.wavtones.com/functiongenerator.php 
+I downloaded 3 sine waves with a frequency of 100Hz, 200Hz and 500Hz, now we need to convert them.
+
+A) WAV to CSV 
+
+Before we can use the converter software make sure to install scipy and pandas on a system running python V3.6 or newer.
+In case you haven't installed scipy and pandas yet run the following commands in the terminal
+-> pip install scipy
+-> pip install pandas
+
+Now download the wav2cvs program from the website and open it in your python editor and change it in the following way.
+*** Enter the wav file name ***
+
+Line 12: input_filename = input("Input file number:100HZ.wav")
+->After changing the input_filename to out file name the program wouldn't run, to solve this I changed the following lines of code.
+
+Line 12: input_filename = "100HZ.wav"
+Line 18: samrate, data = wavfile.read(str('./' + input_filename))
+
+-> I changed line 12 to make the input easier, now you just have to input the name of the file.
+-> I changed line 18 so the wav file can be in the same directory as the program.
+
+*** Run the program ***
+
+Wheb we run the program it should say:
+->Load is Done! 
+->Mono.wav file
+->Save is done 100HZ_Output_mono.csv
+
+The generated csv file can be found in the map where our wav2csv program is.
+
+B) Read the WAV file
+In order to read the CSV file, we will be using the csv library, make sure this is installed by using the following command.
+-> pip install csv
+
+Next make sure the csv file is in the same map as our python file.
+Reading the datafile will be done by the following lines of code:
+
+path="wave.csv"
+file= open(path, newline='')
+reader = csv.reader(file)
+
+header = next(reader)   #first line is the header 
+data=[]
+
+
+We use the data tuple to store the data from the csv file and we loop through every line using the following code.
+for row in reader:
+    temp_step = int(row[0])
+    step.append(temp_step)
+    temp_wave1=int(row[1])
+    wave1.append(temp_wave1)
+    temp_wave2=int(row[2])
+    wave2.append(temp_wave2)
+    temp_wave3=int(row[3])
+    wave3.append(temp_wave3)
+    signal.append(temp_wave1 + temp_wave2 + temp_wave3)
+    sum1.append(temp_wave1 + temp_wave2)
+    sum2.append(temp_wave2 + temp_wave3)
+    sum3.append(temp_wave1 + temp_wave3)
+
+I first read every variable from the file into a temp variable so it's easier to handle.
+Each line in the csv file will be read and put into the according wave tuple, for refrence the CSV file is built up like this:
+-> STEP		100Hz Wave	 200Hz Wave	 500Hz Wave
+   row[0]		row[1]		 row[2]		 row[3]
+
+
+C) analyise and extract the frequencies 
+
+The next part is to analyse the data and extract the frequencies of the signals so we can isolate them.
+In order to do this we will use the FFT filter to get the frequency components of our signal, this is done by the following code.
+
+sig_fft = fftpack.fft(signal)
+
+# And the power (sig_fft is of complex dtype)
+power = np.abs(sig_fft)**2
+
+# The corresponding frequencies
+sample_freq = fftpack.fftfreq(len(signal),d=1)
+
+# Plot the FFT power
+plt.figure(figsize=(10, 20))
+plt.plot(sample_freq, power)
+plt.xlabel('Frequency [Hz]')
+plt.ylabel('plower')
+plt.xlim(-0.05,0.05)
+plt.show()
+
+This code will will analyse our signal and draw a frequency plot with the found frequencies and how strong they're represented in our original signal.
+If you use the same exact signal as I did you should see the 6 lines that represent diffrent frequencie signals within the signal.
+Now we want to filter out one of the frequencies and keep the other 2.
+This is done by the following code:
+
+pos_mask = np.where(sample_freq > 0)
+freqs = sample_freq[pos_mask]
+peak_freq = freqs[power[pos_mask].argmax()]
+print(peak_freq)
+
+high_freq_fft = sig_fft.copy()
+high_freq_fft[np.abs(sample_freq) > peak_freq] = 0
+filtered_sig = fftpack.ifft(high_freq_fft)
+
+The code will only filter ac signals, this in terms means that the signal will have a frequency that's not equal to 0Hz
+Next we search for the highest frequency signal in the sum of signals and filter that one out.
+The resulted wave will be stored in the filtered_sig tupple.
+
+D) Ploting the results
+
+Last step is to plot our results so we can check if the program filtered out the max frequencie signal correctly, this is done by repeating the same plotting code.
+
+sig_fft1 = fftpack.fft(filtered_sig)
+
+# And the power (sig_fft is of complex dtype)
+power = np.abs(sig_fft1)**2
+
+# The corresponding frequencies
+sample_freq = fftpack.fftfreq(len(filtered_sig), d=1)
+
+plt.figure(figsize=(10, 20))
+plt.plot(sample_freq, power)
+plt.xlabel('Frequency [Hz]')
+plt.ylabel('plower')
+plt.xlim(-0.05,0.05)
+plt.show()
+
+
+fig, (ax1, ax2, ax3, ax4) = plt.subplots(4)
+fig.suptitle('3 waves + total wave')
+ax1.plot(step, sum1)
+ax2.plot(step, sum2)
+ax3.plot(step, sum3)
+ax4.plot(step, filtered_sig)  
+
+ax1.set_xlim(0,2000)
+ax2.set_xlim(0,2000)
+ax3.set_xlim(0,2000)
+ax4.set_xlim(0,2000)
+
+This code will plot the original wave and the filtered signal in orange, when we look at the frequencie diagram we will also see that the 2 highest frequencie 
+signals aren't there anymore. This is how we know that the signal was sucesfully filtered.
+The filtered signal is the sum of temp_wave1 + temp_wave2 which is the 100Hz and 200Hz wave respectively, the 500Hz wave is filtered out from the signal.
+
+
+2) Heart Rate Analysis
+
+In this program we will analyse a heartbeate through the use of a wav sound file. Of course our python program can't do anything with just the sound form.
+That's why we will download a .wav audio file from the following website: https://www.kaggle.com/kinguistics/heartbeat-sounds
+And convert it to a CSV data file just like we did in exercise 1.
+I downloaded the entire repository of heartbeat sounds from the website and converted one of the sounds into a csv file.
+It's important to find a signal that works with the program, tome or them might not work as well and then you will need to try and find another one that works better.
+We start by installing the heartpy library by running the following command in the anaconda command line.
+-> pip install heartpy
+
+For this program we only need 2 library's which we include through the following lines of code.
+
+import heartpy as hp
+import matplotlib.pyplot as plt
+
+Now we can do the heart rate analysis, we first declare a sample variable that will decide the sample rate with which our heart beat will be analysed and sampled at.
+
+sample_rate = 250
+
+I've chosen a sample rate of 250 because the heart beat will never be higher then 250 and this gave me the result I expected.
+Now we need to read the csv data file and analyse the data, unlike usual the heart beat library already has a function that 
+will scan a csv file and put the data in a tupple, this is done by the following code.
+
+data = hp.get_data('data.csv')
+
+Now we plot the data to check if the program correctly inputs and processes our csv file.
+
+plt.figure(figsize=(12,4))
+plt.plot(data)
+plt.show()
+
+After running the code you should see the heart beat in the plot window.
+Now that we've the heart beat we can analyse and plot it, this is done by the following code:
+#run analysis
+wd, m = hp.process(data, sample_rate)
+
+#visualise in plot of custom size
+plt.figure(figsize=(12,4))
+hp.plotter(wd, m)
+
+All that is left to do is to visualise the computed measurements that are stored in the m variable.
+
+#display computed measures
+for measure in m.keys():
+    print('%s: %f' %(measure, m[measure]))
+
+After running the program you should see all the measurements the library calculated.
+
+
+3) Red Alert
+
+This program will run a game called Red Alert where we have to click the correct image before the image hits the bottom of our screen.
+I won't go over the basis of the game because you can find all the data on how to do this in the Coding Games in Python book (chapter 6)
+I've followed the book to get the basic game and now we're going to make a couple alterations.
+
+A) Changing the actor
+
+To change the actor I downloaded a new png image of a snowflake and added them to the images folder.
+Next I altered the following line of code.
+Line 67 -> star = Actor(color + "-snowflake")
+
+Instead of using the normal stars it will now use the snowflake images.
+
+B) Need for speed
+
+The second modification I made to the program is need for speed, each snowflake will go at a random speed.
+This is done by using the randint function: random_speed_adjustment = random.randint(0,2)
+The variable random_speed_adjustment will contain a value between 0,2 ( 0 and 2 are included )
+
+Now to make the snowflakes come down quicker we add the random value to the current level variable and subtract it with the start speed.
+Line 82 -> duration = START_SPEED - current_level + random_speed_adjustment
+
+Now if we run the program the actors ( images ) will be snowflakes that each go down the screen at a diffrent pace.
+ 
